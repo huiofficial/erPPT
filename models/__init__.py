@@ -1,5 +1,5 @@
 from .order import Order
-from .ware import Ware
+from .product import Product
 
-__all__ = [Order, Ware]
+__all__ = [Order, Product]
 

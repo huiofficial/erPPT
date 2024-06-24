@@ -1,8 +1,8 @@
-class Ware:
+class Product:
     def __init__(self, product_code, product_name, product_model, attribute, barcode, category, product_remark, unit,
                  quantity, sale_price, estimated_purchase_price, discount_rate, discount_amount, discount,
                  discounted_price, amount, reference_cost, estimated_gross_profit, estimated_gross_profit_rate,
-                 latest_purchase_price, warehouse, remark, available_stock, basic_unit, basic_unit_quantity,
+                 latest_purchase_price, product_house, remark, available_stock, basic_unit, basic_unit_quantity,
                  whole_scatter, conversion_formula, is_gift, shelf, undelivered_quantity, undelivered_basic_quantity,
                  delivered_quantity, delivered_basic_quantity, row_status, custom_column_one, custom_column_two,
                  custom_column_three, custom_column_four, custom_column_five):
@@ -26,7 +26,7 @@ class Ware:
         self.estimated_gross_profit = estimated_gross_profit
         self.estimated_gross_profit_rate = estimated_gross_profit_rate
         self.latest_purchase_price = latest_purchase_price
-        self.warehouse = warehouse
+        self.product_house = product_house
         self.remark = remark
         self.available_stock = available_stock
         self.basic_unit = basic_unit

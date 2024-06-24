@@ -1,12 +1,12 @@
 import datetime
 
-from .ware import Ware
+from .product import Product
 
 
 class Order:
     def __init__(self, order_date, order_id, associate_sale_id, business_kind, associate_purchase_order_id, saler,
                  customer, sale_amount, discount_price, discounted_price, order_state, delivery_date, order_maker,
-                 order_making_time, reviewer, remark, delivery_method, print_count, wares):
+                 order_making_time, reviewer, remark, delivery_method, print_count, products):
         self.order_date = datetime.datetime.strptime(order_date, "%Y-%m-%d")
         self.order_id = order_id
         self.associate_sale_id = associate_sale_id
@@ -25,13 +25,13 @@ class Order:
         self.remark = remark
         self.delivery_method = delivery_method
         self.print_count = print_count
-        self.wares = wares
+        self.products = products
 
         assert self.sale_amount == self.discount_price + self.discounted_price, "销售金额、优惠金额与优惠后金额有问题！"
 
     @classmethod
-    def from_dataframe_rows(cls, order_row, wares_rows):
-        wares = [Ware.from_dataframe_row(row) for _, row in wares_rows.iterrows()]
+    def from_dataframe_rows(cls, order_row, products_rows):
+        products = [Product.from_dataframe_row(row) for _, row in products_rows.iterrows()]
         return cls(
             order_row['订单日期'],
             order_row['订单编号'],
@@ -51,7 +51,7 @@ class Order:
             order_row['备注'],
             order_row['交货方式'],
             order_row['打印次数'],
-            wares
+            products
         )
 
 
@@ -65,10 +65,10 @@ if __name__ == "__main__":
     orders = []
     for order_id, group in df.groupby('订单编号'):
         order_row = group.iloc[0]
-        wares_rows = group
-        order = Order.from_dataframe_rows(order_row, wares_rows)
+        products_rows = group
+        order = Order.from_dataframe_rows(order_row, products_rows)
         orders.append(order)
 
     print(vars(orders[0]))
-    for ware in orders[0].wares:
-        print(vars(ware))
+    for product in orders[0].products:
+        print(vars(product))
