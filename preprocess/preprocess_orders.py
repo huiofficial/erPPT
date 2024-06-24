@@ -121,7 +121,7 @@ def insert_product(cursor, product, order_id):
     logger.info(f"Inserted product: {product.product_code}")
 
 
-def order_preprocess(file_path='./data/销货订单导出_202306241022.xlsx', db_path="./database/longtai.db"):
+def preprocess_orders(file_path='./data/销货订单导出_202306241022.xlsx', db_path="./database/longtai.db"):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     init_db(conn)
@@ -147,4 +147,4 @@ def order_preprocess(file_path='./data/销货订单导出_202306241022.xlsx', db
 
 
 if __name__ == "__main__":
-    order_preprocess()
+    preprocess_orders()

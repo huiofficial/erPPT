@@ -3,7 +3,6 @@ import sqlite3
 
 import pandas as pd
 
-# 配置日志
 logging.basicConfig(
     filename=__file__,
     level=logging.INFO,
@@ -55,11 +54,9 @@ def process_file(file_path, db_name):
     db.close()
 
 
-def main():
-    file_path = 'data/换型时间_MES.xlsx'  # Replace with the actual path to your file
-    db_name = 'database/longtai.db'
+def preprocess_exchange_type(file_path='../data/换型时间_MES.xlsx', db_name='database/longtai.db'):
     process_file(file_path, db_name)
 
 
 if __name__ == '__main__':
-    main()
+    preprocess_exchange_type()

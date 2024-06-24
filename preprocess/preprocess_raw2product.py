@@ -123,12 +123,12 @@ def process_file(file_path, db):
                                 db.insert_raw_to_product(raw_code, product_code)
 
 
-def raw2product(file_path=f"data/毛坯和成品对应表.xlsx", db_path="database/longtai.db"):
-    os.makedirs('database', exist_ok=True)
+def preprocess_raw2product(file_path=f"data/毛坯和成品对应表.xlsx", db_path="database/longtai.db"):
+    os.makedirs('../database', exist_ok=True)
     db = Database(db_path)
     process_file(file_path, db)
     db.close()
 
 
 if __name__ == "__main__":
-    raw2product()
+    preprocess_raw2product()
