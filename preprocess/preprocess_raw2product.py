@@ -3,11 +3,10 @@ import sqlite3
 
 import pandas as pd
 
-# 配置日志
+from common.utils import log_execution
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-from common.utils import log_execution
 
 
 class Raw:
@@ -79,16 +78,15 @@ def process_file(file_path, db):
     df = pd.read_excel(file_path, header=1)
 
     for index, row in df.iterrows():
-        if pd.notna(row['毛坯料号']) and pd.notna(row['中文名称']):  # 检查毛坯编码和名称是否为空
+        if pd.notna(row['毛坯料号']) and pd.notna(row['中文名称']):
             raw = Raw(row['毛坯料号'], row['中文名称'])
             raw_code = db.insert_raw(raw)
 
-            if raw_code:  # 检查插入的raw_code是否为空
-                # 遍历商品编号列，插入对应的商品
+            if raw_code:
                 for col in df.columns:
                     if col.startswith('商品编号'):
                         product_code = row[col]
-                        if pd.notna(product_code):  # 检查是否为空
+                        if pd.notna(product_code):
                             product_category = df.at[index, '商品类别'] if '商品类别' in df.columns else None
                             product = Product(product_code, product_category, raw_code)
                             db.insert_product(product)

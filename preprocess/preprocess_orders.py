@@ -12,7 +12,6 @@ logger.setLevel(logging.INFO)
 
 def init_db(conn):
     cursor = conn.cursor()
-    # 创建 orders 表
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS orders (
         order_id TEXT PRIMARY KEY,
@@ -83,7 +82,6 @@ def init_db(conn):
     )
     ''')
 
-    # 提交创建表的操作
     conn.commit()
     logger.info(f"Initialized database and created tables")
 
@@ -92,7 +90,6 @@ def insert_order(cursor, order):
     order_dict = vars(order)
     order_dict['order_date'] = order.order_date.strftime("%Y-%m-%d")  # 格式化日期
 
-    # 获取除了最后一个键值对以外的所有键值对
     order_dict_items = list(order_dict.items())[:-1]
     order_dict = dict(order_dict_items)
 
@@ -142,7 +139,6 @@ def preprocess_orders(file_path='./data/销货订单导出_202306241022.xlsx', d
         for product in order.products:
             insert_product(cursor, product, order.order_id)
 
-    # 提交插入数据的操作
     conn.commit()
     logger.info(f"Processed orders from {file_path}")
     conn.close()

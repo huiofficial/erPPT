@@ -3,13 +3,13 @@ import sqlite3
 from collections import defaultdict
 
 import pandas as pd
+
 from common.utils import log_execution
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# 产品数据结构
 class ProductProcess:
     def __init__(self):
         self.data = defaultdict(list)
@@ -45,7 +45,8 @@ def process_data(df):
                 '加工数量': row.get(('工序' + str(i), '加工数量'), None),
                 '加工时间': row.get(('工序' + str(i), '加工时间'), None),
                 '设备名称': row.get(('工序' + str(i), '设备名称'), None),
-                '统计完成时间': row.get(('工序' + str(i), '统计完成时间（日期）'), None)
+                '统计完成时间': row.get(('工序' + str(i), '统计完成时间（日期）'), None),
+                'flow_range': i
             }
             if pd.notna(process_info['工序名称']):  # 只有当工序名称不为空时才添加
                 process_flow.append(process_info)
@@ -60,29 +61,30 @@ def create_tables(conn):
     # 创建表
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        product_model TEXT NOT NULL
+        product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_code TEXT NOT NULL
     )
     ''')
 
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS process_flows (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        product_id INTEGER,
-        FOREIGN KEY (product_id) REFERENCES products (id)
+        flow_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_code TEXT,
+        FOREIGN KEY (product_code) REFERENCES products (product_code)
     )
     ''')
 
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS processes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        process_id INTEGER PRIMARY KEY AUTOINCREMENT,
         flow_id INTEGER,
         process_name TEXT,
         quantity INTEGER,
         duration REAL,
         equipment TEXT,
         completion_date TEXT,
-        FOREIGN KEY (flow_id) REFERENCES process_flows (id)
+        flow_range INTEGER,
+        FOREIGN KEY (flow_id) REFERENCES process_flows (flow_id)
     )
     ''')
     conn.commit()
@@ -90,29 +92,27 @@ def create_tables(conn):
 
 def insert_data(conn, product_processes):
     cursor = conn.cursor()
-    # 插入数据
+
     for product, flows in product_processes.items():
-        # 插入产品数据
-        cursor.execute('INSERT INTO products (product_model) VALUES (?)', (product,))
+        cursor.execute('INSERT OR IGNORE INTO products (product_code) VALUES (?)', (product,))
         product_id = cursor.lastrowid
 
         for flow in flows:
-            # 插入工序流程数据
-            cursor.execute('INSERT INTO process_flows (product_id) VALUES (?)', (product_id,))
+            cursor.execute('INSERT INTO process_flows (product_code) VALUES (?)', (product,))
             flow_id = cursor.lastrowid
 
             for process in flow:
-                # 插入具体工序数据
                 cursor.execute('''
-                INSERT INTO processes (flow_id, process_name, quantity, duration, equipment, completion_date)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO processes (flow_id, process_name, quantity, duration, equipment, completion_date, flow_range)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     flow_id,
                     process['工序名称'],
                     process['加工数量'],
                     process['加工时间'],
                     process['设备名称'],
-                    process['统计完成时间']
+                    process['统计完成时间'],
+                    process['flow_range']
                 ))
     conn.commit()
 
@@ -121,17 +121,11 @@ def insert_data(conn, product_processes):
 def preprocess_process(file_path='./data/产品加工用时统计进度表.xlsx',
                        sheet_name='史密斯',
                        db_path='./database/longtai.db'):
-    # 加载数据
     df = load_data(file_path, sheet_name)
-    # 处理数据
     product_processes = process_data(df)
-    # 连接 SQLite 数据库（如果数据库不存在，将自动创建）
     conn = sqlite3.connect(db_path)
-    # 创建表
     create_tables(conn)
-    # 插入数据
     insert_data(conn, product_processes.to_dict())
-    # 关闭连接
     conn.close()
     logger.info("Done insert process table")
 
