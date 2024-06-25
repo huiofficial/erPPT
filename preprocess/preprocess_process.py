@@ -1,7 +1,12 @@
+import logging
 import sqlite3
 from collections import defaultdict
 
 import pandas as pd
+from common.utils import log_execution
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 # 产品数据结构
@@ -112,9 +117,10 @@ def insert_data(conn, product_processes):
     conn.commit()
 
 
-def preprocess_process(file_path='../data/产品加工用时统计进度表.xlsx',
+@log_execution
+def preprocess_process(file_path='./data/产品加工用时统计进度表.xlsx',
                        sheet_name='史密斯',
-                       db_path='../database/longtai.db'):
+                       db_path='./database/longtai.db'):
     # 加载数据
     df = load_data(file_path, sheet_name)
     # 处理数据
@@ -127,7 +133,7 @@ def preprocess_process(file_path='../data/产品加工用时统计进度表.xlsx
     insert_data(conn, product_processes.to_dict())
     # 关闭连接
     conn.close()
-    print("数据已成功写入 SQLite3 数据库")
+    logger.info("Done insert process table")
 
 
 if __name__ == "__main__":

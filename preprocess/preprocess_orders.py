@@ -3,6 +3,7 @@ import sqlite3
 
 import pandas as pd
 
+from common.utils import log_execution
 from models import Order
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ def init_db(conn):
 
     # 创建 products 表
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS products_in_order (
+    CREATE TABLE IF NOT EXISTS order_products (
         product_code TEXT,
         product_name TEXT,
         product_model TEXT,
@@ -114,13 +115,14 @@ def insert_product(cursor, product, order_id):
     values = list(product_dict.values()) + [order_id]
 
     cursor.execute(f'''
-        INSERT INTO products_in_order ({columns})
+        INSERT INTO order_products ({columns})
         VALUES ({placeholders})
         ''', values)
 
     logger.info(f"Inserted product: {product.product_code}")
 
 
+@log_execution
 def preprocess_orders(file_path='./data/销货订单导出_202306241022.xlsx', db_path="./database/longtai.db"):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()

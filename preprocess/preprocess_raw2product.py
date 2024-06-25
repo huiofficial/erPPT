@@ -1,5 +1,4 @@
 import logging
-import os
 import sqlite3
 
 import pandas as pd
@@ -7,10 +6,8 @@ import pandas as pd
 # 配置日志
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-handler = logging.FileHandler('./logging/preprocess_raw2product.log')
-formatter = logging.Formatter('%(asctime)s | %(filename)s | %(name)s | %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+
+from common.utils import log_execution
 
 
 class Raw:
@@ -20,14 +17,10 @@ class Raw:
 
 
 class Product:
-    def __init__(self, product_code):
+    def __init__(self, product_code, product_category, raw_code):
         self.product_code = product_code
-
-
-class Raw2Product:
-    def __init__(self, raw, product):
-        self.raw = raw
-        self.product = product
+        self.product_category = product_category
+        self.raw_code = raw_code
 
 
 class Database:
@@ -47,84 +40,62 @@ class Database:
         ''')
 
         self.cursor.execute('''
-        CREATE TABLE IF NOT EXISTS product (
+        CREATE TABLE IF NOT EXISTS products (
             product_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_code TEXT UNIQUE
-        )
-        ''')
-
-        self.cursor.execute('''
-        CREATE TABLE IF NOT EXISTS raw2product (
+            product_code TEXT UNIQUE,
+            product_category TEXT,
             raw_code TEXT,
-            product_code TEXT,
-            FOREIGN KEY(raw_code) REFERENCES raw(raw_code),
-            FOREIGN KEY(product_code) REFERENCES product(product_code)
+            FOREIGN KEY(raw_code) REFERENCES raw(raw_code)
         )
         ''')
 
         self.conn.commit()
-        logger.info(f"{self.db_name} | Database | raw, product, raw2product | Created tables")
 
     def insert_raw(self, raw):
         if raw.raw_code and raw.raw_name:  # 检查是否为空
             self.cursor.execute('''
             INSERT OR IGNORE INTO raw(raw_code, raw_name) VALUES (?, ?)
             ''', (raw.raw_code, raw.raw_name))
+            self.conn.commit()
             self.cursor.execute('SELECT raw_id FROM raw WHERE raw_code = ?', (raw.raw_code,))
-            logger.info(
-                f"{self.db_name} | raw | raw_code={raw.raw_code}, raw_name={raw.raw_name} | "
-                f"Inserted raw material")
             return raw.raw_code
         return None
 
     def insert_product(self, product):
-        if product.product_code:  # 检查是否为空
+        if product.product_code and product.raw_code:  # 检查是否为空
             self.cursor.execute('''
-            INSERT OR IGNORE INTO product (product_code) VALUES (?)
-            ''', (product.product_code,))
-            self.cursor.execute('SELECT product_code FROM product WHERE product_code = ?',
-                                (product.product_code,))
-            logger.info(
-                f"{self.db_name} | product | product_code={product.product_code} | Inserted finished product")
+            INSERT OR IGNORE INTO products (product_code, product_category, raw_code) VALUES (?, ?, ?)
+            ''', (product.product_code, product.product_category, product.raw_code))
+            self.conn.commit()
+            self.cursor.execute('SELECT product_id FROM products WHERE product_code = ?', (product.product_code,))
             return product.product_code
         return None
 
-    def insert_raw_to_product(self, raw_code, product_code):
-        if raw_code and product_code:  # 检查是否为空
-            self.cursor.execute('''
-            INSERT INTO raw2product (raw_code, product_code) VALUES (?, ?)
-            ''', (raw_code, product_code))
-            self.conn.commit()
-            logger.info(
-                f"{self.db_name} | raw2product | raw_code={raw_code}, product_code={product_code} | Inserted relationship")
-
     def close(self):
         self.conn.close()
-        logger.info(f"{self.db_name} | Database | | Connection closed")
 
 
 def process_file(file_path, db):
     df = pd.read_excel(file_path, header=1)
 
     for index, row in df.iterrows():
-        if pd.notna(row['毛坯料号']) or pd.notna(row['中文名称']):  # 检查毛坯编码和名称是否为空
+        if pd.notna(row['毛坯料号']) and pd.notna(row['中文名称']):  # 检查毛坯编码和名称是否为空
             raw = Raw(row['毛坯料号'], row['中文名称'])
             raw_code = db.insert_raw(raw)
 
-            if raw_code:  # 检查插入的raw_id是否为空
+            if raw_code:  # 检查插入的raw_code是否为空
                 # 遍历商品编号列，插入对应的商品
                 for col in df.columns:
                     if col.startswith('商品编号'):
                         product_code = row[col]
                         if pd.notna(product_code):  # 检查是否为空
-                            product = Product(product_code)
-                            product_code = db.insert_product(product)
-                            if product_code:  # 检查插入的product_id是否为空
-                                db.insert_raw_to_product(raw_code, product_code)
+                            product_category = df.at[index, '商品类别'] if '商品类别' in df.columns else None
+                            product = Product(product_code, product_category, raw_code)
+                            db.insert_product(product)
 
 
-def preprocess_raw2product(file_path=f"data/毛坯和成品对应表.xlsx", db_path="database/longtai.db"):
-    os.makedirs('../database', exist_ok=True)
+@log_execution
+def preprocess_raw2product(file_path=f"./data/毛坯和成品对应表.xlsx", db_path="./database/longtai.db"):
     db = Database(db_path)
     process_file(file_path, db)
     db.close()

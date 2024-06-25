@@ -3,10 +3,10 @@ import sqlite3
 
 import pandas as pd
 
-logging.basicConfig(
-    filename=__file__,
-    level=logging.INFO,
-    format='%(asctime)s | %(filename)s | %(name)s | %(message)s')
+from common.utils import log_execution
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class Database:
@@ -25,7 +25,6 @@ class Database:
         )
         ''')
         self.conn.commit()
-        logging.info(f"{self.db_name} | Database | exchange_type_time | Created tables")
 
     def insert_data(self, device_name, exchange_time):
         self.cursor.execute('''
@@ -33,17 +32,14 @@ class Database:
         VALUES (?, ?)
         ''', (device_name, exchange_time))
         self.conn.commit()
-        logging.info(
-            f"{self.db_name} | exchange_type_time | Inserted device_name={device_name}, exchange_time={exchange_time}")
 
     def close(self):
         self.conn.close()
-        logging.info(f"{self.db_name} | exchange_type_time | | Connection closed")
 
 
-def process_file(file_path, db_name):
+def process_file(file_path, db_path):
     df = pd.read_excel(file_path, header=0)
-    db = Database(db_name)
+    db = Database(db_path)
 
     for index, row in df.iterrows():
         if pd.notna(row['设备名称']):
@@ -54,8 +50,9 @@ def process_file(file_path, db_name):
     db.close()
 
 
-def preprocess_exchange_type(file_path='../data/换型时间_MES.xlsx', db_name='database/longtai.db'):
-    process_file(file_path, db_name)
+@log_execution
+def preprocess_exchange_type(file_path='../data/换型时间_MES.xlsx', db_path='../database/longtai.db'):
+    process_file(file_path, db_path)
 
 
 if __name__ == '__main__':
