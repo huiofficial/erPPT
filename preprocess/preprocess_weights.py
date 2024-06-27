@@ -4,10 +4,6 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-handler = logging.FileHandler('db_operations.log')
-formatter = logging.Formatter('%(asctime)s | %(filename)s | %(name)s | %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
 
 
 def add_column_if_not_exists(cursor, table_name, column_name, column_type="TEXT"):
@@ -15,17 +11,25 @@ def add_column_if_not_exists(cursor, table_name, column_name, column_type="TEXT"
     columns = [info[1] for info in cursor.fetchall()]
     if column_name not in columns:
         cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
-        logger.info(f"Added column {column_name} to {table_name} table")
+
+
+def insert_or_update_product(cursor, product_code, weight):
+    cursor.execute('SELECT product_id FROM products WHERE product_code = ?', (product_code,))
+    row = cursor.fetchone()
+    if row:
+        cursor.execute('UPDATE products SET weight = ? WHERE product_code = ?', (weight, product_code))
+        logger.info(f"Updated product {product_code} with weight {weight}")
+    else:
+        cursor.execute('INSERT INTO products (product_code, weight) VALUES (?, ?)', (product_code, weight))
 
 
 def update_product_weights(cursor, weights):
     # 如果表中没有Weight列，添加Weight列
     add_column_if_not_exists(cursor, 'products', 'weight', 'REAL')
 
-    # 更新产品重量
+    # 插入或更新产品重量
     for product_code, weight in weights.items():
-        cursor.execute('UPDATE products SET Weight = ? WHERE product_code = ?', (weight, product_code))
-        logger.info(f"Updated product {product_code} with weight {weight}")
+        insert_or_update_product(cursor, product_code, weight)
 
 
 def load_weight_data(file_path):
@@ -37,7 +41,7 @@ def load_weight_data(file_path):
     return weights
 
 
-def update_weights(file_path, db_path='../database/longtai.db'):
+def preprocess_weights(file_path, db_path='../database/longtai.db'):
     # 加载重量数据
     weights = load_weight_data(file_path)
 
@@ -57,4 +61,4 @@ def update_weights(file_path, db_path='../database/longtai.db'):
 
 if __name__ == "__main__":
     weight_file_path = '../data/净重.xlsx'
-    update_weights(weight_file_path)
+    preprocess_weights(weight_file_path)

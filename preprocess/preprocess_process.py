@@ -1,9 +1,7 @@
 import logging
 import sqlite3
 from collections import defaultdict
-
 import pandas as pd
-
 from common.utils import log_execution
 
 logger = logging.getLogger(__name__)
@@ -21,14 +19,17 @@ class ProductProcess:
         return dict(self.data)
 
 
-def load_data(file_path, sheet_name):
+def load_data(file_path):
     # 读取 Excel 文件
     xls = pd.ExcelFile(file_path)
-    # 读取指定表，设置正确的header行
-    df = pd.read_excel(xls, sheet_name=sheet_name, header=[1, 2])
-    # 填充整个 DataFrame 的缺失值，用前一行数据进行填充
-    df = df.ffill()
-    return df
+    data = {}
+    for sheet_name in xls.sheet_names[:2]:
+        # 读取每个 sheet，并设置正确的 header 行
+        df = pd.read_excel(xls, sheet_name=sheet_name, header=[1, 2])
+        # 填充整个 DataFrame 的缺失值，用前一行数据进行填充
+        df = df.ffill()
+        data[sheet_name] = df
+    return data
 
 
 def process_data(df):
@@ -118,14 +119,16 @@ def insert_data(conn, product_processes):
 
 
 @log_execution
-def preprocess_process(file_path='./data/产品加工用时统计进度表.xlsx',
-                       sheet_name='史密斯',
-                       db_path='./database/longtai.db'):
-    df = load_data(file_path, sheet_name)
-    product_processes = process_data(df)
+def preprocess_process(file_path='./data/产品加工用时统计进度表.xlsx', db_path='./database/longtai.db'):
+    data = load_data(file_path)
     conn = sqlite3.connect(db_path)
     create_tables(conn)
-    insert_data(conn, product_processes.to_dict())
+
+    for sheet_name, df in data.items():
+        logger.info(f"Processing sheet: {sheet_name}")
+        product_processes = process_data(df)
+        insert_data(conn, product_processes.to_dict())
+
     conn.close()
     logger.info("Done insert process table")
 

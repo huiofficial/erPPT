@@ -21,7 +21,8 @@ class Database:
         CREATE TABLE IF NOT EXISTS exchange_type_time (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             device_name TEXT,
-            exchange_time TEXT
+            exchange_time TEXT,
+            current_raw TEXT
         )
         ''')
         self.conn.commit()
@@ -38,14 +39,14 @@ class Database:
 
 
 def process_file(file_path, db_path):
-    df = pd.read_excel(file_path, header=0)
+    df = pd.read_excel(file_path, header=1)
     db = Database(db_path)
 
     for index, row in df.iterrows():
         if pd.notna(row['设备名称']):
             device_names = row['设备名称'].split('/')
             for device_name in device_names:
-                db.insert_data(device_name, row['每班换型时间'])
+                db.insert_data(device_name, row['每次平均换型时间（分钟)'])
 
     db.close()
 

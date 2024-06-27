@@ -83,7 +83,6 @@ def init_db(conn):
     ''')
 
     conn.commit()
-    logger.info(f"Initialized database and created tables")
 
 
 def insert_order(cursor, order):
@@ -102,8 +101,6 @@ def insert_order(cursor, order):
         VALUES ({placeholders})
         ''', values)
 
-    logger.info(f"Inserted order: {order.order_id}")
-
 
 def insert_product(cursor, product, order_id):
     product_dict = vars(product)
@@ -115,8 +112,6 @@ def insert_product(cursor, product, order_id):
         INSERT INTO order_products ({columns})
         VALUES ({placeholders})
         ''', values)
-
-    logger.info(f"Inserted product: {product.product_code}")
 
 
 @log_execution
@@ -140,7 +135,6 @@ def preprocess_orders(file_path='./data/销货订单导出_202306241022.xlsx', d
             insert_product(cursor, product, order.order_id)
 
     conn.commit()
-    logger.info(f"Processed orders from {file_path}")
     conn.close()
 
 
