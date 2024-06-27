@@ -13,7 +13,7 @@ class ProductProcess:
         self.data = defaultdict(list)
 
     def add_process_flow(self, product, process_flow):
-        self.data[product].append(process_flow)
+        self.data[product.strip()].append(process_flow)  # 修剪产品编码
 
     def to_dict(self):
         return dict(self.data)
@@ -38,7 +38,7 @@ def process_data(df):
 
     # 遍历数据框，收集每个产品型号的工序信息
     for _, row in df.iterrows():
-        product = row[('产品型号', 'Unnamed: 1_level_1')]
+        product = str(row[('产品型号', 'Unnamed: 1_level_1')]).strip()  # 修剪产品编码
         process_flow = []
         for i in range(1, 11):  # 工序 1 到 工序 10
             process_info = {
