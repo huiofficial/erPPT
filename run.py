@@ -1,6 +1,7 @@
 import logging
 import sqlite3
 from datetime import datetime, timedelta, time
+import pandas as pd
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -94,6 +95,8 @@ def process_orders(db_path, start_date=None):
 
     equipment_usage = {}
     all_orders_schedule = []
+    order_details = []
+    order_start_end_times = []
 
     # 如果未指定开始日期，使用默认值 2023-01-01
     if start_date is None:
@@ -108,6 +111,7 @@ def process_orders(db_path, start_date=None):
         product_codes = [product[0] for product in products]
 
         order_schedule = []
+        order_start_time = current_time
 
         for product_code in product_codes:
             try:
@@ -118,6 +122,8 @@ def process_orders(db_path, start_date=None):
                 print(str(e))
                 continue
 
+            product_start_time = current_time
+
             for process in processes:
                 process_id, flow_id, process_name, quantity, duration, equipment, completion_date, flow_range = process
 
@@ -125,34 +131,54 @@ def process_orders(db_path, start_date=None):
                     current_product_code = equipment_usage[equipment]
                     if current_product_code != product_code:
                         exchange_time = get_exchange_time(cursor, equipment)
+                        start_exchange_time = current_time
                         current_time += timedelta(minutes=exchange_time)
                         current_time, _ = adjust_for_working_hours(current_time, 0)
+                        end_exchange_time = current_time
+                        order_details.append((order_id, product_code, process_name, equipment, start_exchange_time, end_exchange_time, "换型"))
 
                 equipment_usage[equipment] = product_code
 
                 start_time, end_time = adjust_for_working_hours(current_time, duration)
                 order_schedule.append((product_code, process_name, equipment, start_time, end_time))
+                order_details.append((order_id, product_code, process_name, equipment, start_time, end_time, "加工"))
                 current_time = end_time
+
+            product_end_time = current_time
+            all_orders_schedule.append((order_id, product_code, product_start_time, product_end_time))
 
         if not order_schedule:
             continue
-        last_completion_time = max(end_time for _, _, _, _, end_time in order_schedule)
+        order_end_time = max(end_time for _, _, _, _, end_time in order_schedule)
+        order_start_end_times.append((order_id, order_start_time, order_end_time))
 
-        if last_completion_time > datetime.strptime(delivery_date, '%Y-%m-%d'):
+        if order_end_time > datetime.strptime(delivery_date, '%Y-%m-%d'):
             logger.warning(f"Order {order_id} cannot be delivered on time.")
             print(f"Order {order_id} cannot be delivered on time.")
             conn.close()
             return
         else:
             logger.info(f"Order {order_id} can be delivered on time.")
-            all_orders_schedule.extend(order_schedule)
 
     conn.close()
 
-    # 输出生产时间顺序表
-    for schedule in all_orders_schedule:
-        print(
-            f"Product {schedule[0]} - Process {schedule[1]} on equipment {schedule[2]} from {schedule[3]} to {schedule[4]}")
+    # 按订单输出生产时间顺序表
+    for order_id, start_time, end_time in order_start_end_times:
+        print(f"Order {order_id} from {start_time} to {end_time}".replace('\n', ' '))
+        order_product_schedules = [sched for sched in all_orders_schedule if sched[0] == order_id]
+        for sched in order_product_schedules:
+            print(f"  Product {sched[1]} from {sched[2]} to {sched[3]}".replace('\n', ' '))
+            process_schedules = [detail for detail in order_details if detail[0] == order_id and detail[1] == sched[1]]
+            for detail in process_schedules:
+                print(f"    Process {detail[2]} on {detail[3]} from {detail[4]} to {detail[5]} ({detail[6]})".replace('\n', ' '))
+
+    # 创建订单开始和结束时间的 DataFrame
+    # order_df = pd.DataFrame(order_start_end_times, columns=['Order ID', 'Start Time', 'End Time'])
+    # print("\nOrder Start and End Times:\n", order_df.to_string(index=False).replace('\n', ' '))
+    #
+    # # 创建详细生产过程的 DataFrame
+    # detail_df = pd.DataFrame(order_details, columns=['Order ID', 'Product Code', 'Process Name', 'Equipment', 'Start Time', 'End Time', 'Type'])
+    # print("\nProduction Details:\n", detail_df.to_string(index=False).replace('\n', ' '))
 
 
 if __name__ == "__main__":

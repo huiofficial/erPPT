@@ -121,6 +121,7 @@ def preprocess_orders(file_path='./data/销货订单导出_202306241022.xlsx', d
     init_db(conn)
 
     df = pd.read_excel(file_path, header=4).ffill()
+    df.to_csv('./data/Orders_202306241022.csv')
 
     orders = []
     for order_id, group in df.groupby('订单编号'):

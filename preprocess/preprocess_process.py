@@ -29,6 +29,8 @@ def load_data(file_path):
         # 填充整个 DataFrame 的缺失值，用前一行数据进行填充
         df = df.ffill()
         data[sheet_name] = df
+        import os
+        df.to_csv(os.path.join('./data/' + sheet_name + '.csv'))
     return data
 
 
